@@ -9,35 +9,62 @@ You are free use this sceript anywhere with proper mentioning proper credit and 
 // open this page https://www.linkedin.com/mynetwork/invitation-manager/sent/ and paste the script in the console and press enter to see the automation magic to withdrawn pending invitations. If all invitations are not withdrawal then repeat the process
 
 (function() {
-    const max_limit = undefined; // to specify max number of invitations to withdraw or define undefined for all
-    var getInvitations = () => {
-        var withdrawInvitationContainers = document.querySelectorAll("div.invitation-card__action-container");
-        return withdrawInvitationContainers;
+    console.log("Started LinkedIn Withdraw Automation");
+
+    let totalCount = 0;
+    const timeoutInterval = 2000; // 2 seconds between actions
+
+    function findWithdrawButtons() {
+        // Find all visible spans with text 'Withdraw'
+        return Array.from(document.querySelectorAll('span'))
+            .filter(el => el.innerText.trim() === 'Withdraw');
     }
 
-    var removeInvitations = async () => {
-        let invitations = getInvitations();
-        let counter = 0;
-        for (let invitation of invitations) {
-            if (max_limit !== undefined && counter >= max_limit) return;
-            const actionButton = invitation.querySelector(
-                'button.invitation-card__action-btn',
-            )
-            console.log(actionButton.getAttribute('aria-label'));
-            await new Promise((resolve) => {
-                actionButton.click();
-                var intervalId = setInterval(() => {
-                    if (document.querySelector('[data-test-modal-container] > [data-test-modal] [data-test-dialog-primary-btn]')) {
-                        clearInterval(intervalId);
-                        document.querySelector('[data-test-modal-container] > [data-test-modal] [data-test-dialog-primary-btn]').click();
-                        setTimeout(resolve, 5000); // Set the timeout interval to 5000 milliseconds (5 seconds) : ( you can change it )
-                    }
-                })
-            });
-            counter++;
+    function clickConfirmButton() {
+        // Look for the confirm button inside modal
+        const confirmBtn = Array.from(document.querySelectorAll('button, span'))
+            .find(el => el.innerText.trim() === 'Withdraw' && el.offsetParent !== null);
+        if (confirmBtn) {
+            try {
+                confirmBtn.click();
+                totalCount++;
+                console.log(`Confirmed withdrawal #${totalCount}`);
+                return true;
+            } catch (err) {
+                console.error("Failed to click confirm:", err);
+                return false;
+            }
         }
-        console.log(`-----------------------Withdraw invitation script completed-----------------------`);
-        console.log(`-----------------------${invitations.length} pending invitation withdrawn-------------------------------`);
+        return false;
     }
-    removeInvitations();
+
+    function runWithdraw() {
+        const buttons = findWithdrawButtons();
+        if (buttons.length === 0) {
+            console.log("No withdraw buttons found. Retrying in 3 seconds...");
+            setTimeout(runWithdraw, 3000);
+            return;
+        }
+
+        const button = buttons[0]; // Always pick the first one
+        try {
+            button.click();
+            console.log("Clicked initial Withdraw button");
+        } catch (err) {
+            console.error("Failed to click initial button:", err);
+        }
+
+        // Wait a bit for the popup modal, then click confirm
+        setTimeout(() => {
+            if (clickConfirmButton()) {
+                console.log("Clicked confirm in modal");
+            } else {
+                console.log("Confirm button not found, maybe already processed");
+            }
+            // Continue automatically
+            setTimeout(runWithdraw, timeoutInterval);
+        }, 1000); // wait 1 second for modal to appear
+    }
+
+    runWithdraw();
 })();
